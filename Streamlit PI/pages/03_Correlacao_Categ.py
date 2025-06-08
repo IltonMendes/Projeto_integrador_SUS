@@ -51,6 +51,6 @@ fig = px.imshow(corr_df, text_auto=".2f", aspect="auto",
 st.plotly_chart(fig, use_container_width=True)
 
 # -------------------- Navegação --------------------
-st.page_link("app.py", label="🏠 Visão geral")
+st.page_link("app.py", label="🏠 Dashboard")
 st.page_link("pages/02_Estatisticas.py", label="📊 Estatísticas")
 st.page_link("pages/03_Correlacao_Categ.py", label="🔗 Correlação categórica", disabled=True)

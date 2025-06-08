@@ -1,14 +1,3 @@
-############################################
-# IESB Streamlit Style Helper
-# ------------------------------------------
-# Import this module in your Streamlit app
-# and call:
-#   inject_css()
-#   banner("Your title", "optional subtitle")
-#   configure_plotly()
-# right after st.set_page_config(...)
-############################################
-
 import streamlit as st
 import plotly.express as px
 
@@ -112,10 +101,5 @@ def configure_plotly() -> None:
     px.defaults.color_discrete_sequence = [PRIMARY_RED, BLACK, "#7F7F7F"]
 
 
-# ----------------------- HOW TO USE --------------------------------------- #
-# import iesb_streamlit_style as style
-# style.inject_css()
-# style.banner("Relatório de Produção Hospitalar – SUS", "Centro Universitário IESB")
-# style.configure_plotly()
-# --------------------------------------------------------------------------
+
 

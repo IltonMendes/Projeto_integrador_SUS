@@ -6,12 +6,11 @@ import streamlit as st
 DATA_AIH_PATH = Path(r"C:\Users\Usuário\Desktop\Streamlit PI\dados_corrigidos.csv")
 DATA_MUN_PATH = Path(r"C:\Users\Usuário\Desktop\Streamlit PI\municipios.csv")
 
-# ------------------------------------------------------------------
+
 # Funções auxiliares
-# ------------------------------------------------------------------
+
 
 def _safe_read_csv(path: Path, sep: str) -> pd.DataFrame:
-    """Lê CSV local ou via upload quando ausente."""
     try:
         return pd.read_csv(path, sep=sep, low_memory=False)
     except FileNotFoundError:
@@ -21,21 +20,18 @@ def _safe_read_csv(path: Path, sep: str) -> pd.DataFrame:
             st.stop()
         return pd.read_csv(uploaded, sep=sep, low_memory=False)
 
-# ------------------------------------------------------------------
-# Pipeline de dados (cacheado)
-# ------------------------------------------------------------------
+
+# Pipeline de dados 
+
 
 @st.cache_data(show_spinner="↻ Lendo dados...")
 def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Lê AIH + Municípios."""
     aih = _safe_read_csv(DATA_AIH_PATH, sep=";")
     mun = _safe_read_csv(DATA_MUN_PATH, sep=",")
     return aih, mun
 
 @st.cache_data(show_spinner="↻ Processando dados...")
 def pre_process(data: pd.DataFrame, municipios: pd.DataFrame) -> pd.DataFrame:
-    """Merge, limpeza e colunas auxiliares."""
-    # Data YYYY‑MM‑01
     data["data_aih"] = pd.to_datetime(
         data["ano_aih"].astype(str) + "-" + data["mes_aih"].astype(str).str.zfill(2) + "-01",
         format="%Y-%m-%d"
