@@ -1,67 +1,64 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
+import plotly.express as px
 from itertools import combinations
 from scipy.stats import chi2_contingency
-import plotly.express as px
-from utils import load_data, pre_process
+import numpy as np
+from utils import safe_read_csv, pre_process, DATA_AIH_PATH, DATA_MUN_PATH
 from iesb_streamlit_style import inject_css, banner, configure_plotly
 
-# -------------------- Helpers --------------------
-def cramers_v(x: pd.Series, y: pd.Series) -> float:
-    conf = pd.crosstab(x, y)
-    chi2 = chi2_contingency(conf)[0]
-    n = conf.values.sum()
-    r, k = conf.shape
-    phi2 = chi2 / n
-    # Correção de viés
-    phi2_corr = max(0, phi2 - ((k-1)*(r-1))/(n-1))
-    r_corr = r - ((r-1)**2)/(n-1)
-    k_corr = k - ((k-1)**2)/(n-1)
-    return np.sqrt(phi2_corr / max(1e-9, min((k_corr-1), (r_corr-1))))
+# Funções de auxílio
+def cramers_v(confusion_matrix: pd.DataFrame) -> float:
+    chi2 = chi2_contingency(confusion_matrix)[0]
+    n = confusion_matrix.values.sum()
+    r, k = confusion_matrix.shape
+    return np.sqrt(chi2 / (n * (min(k - 1, r - 1))))
 
-@st.cache_data(show_spinner="↻ Matriz de Cramér's V…")
-def cramers_matrix(df_cat: pd.DataFrame) -> pd.DataFrame:
-    cols = df_cat.columns
-    v = np.eye(len(cols))
-    for i, j in combinations(range(len(cols)), 2):
-        value = cramers_v(df_cat.iloc[:, i], df_cat.iloc[:, j])
-        v[i, j] = v[j, i] = value
-    return pd.DataFrame(v, index=cols, columns=cols)
 
-# -------------------- Layout --------------------
-st.set_page_config(page_title="Correlação qualitativa", layout="wide")
+def cramers_matrix(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+    matrix = pd.DataFrame(index=cols, columns=cols, dtype=float)
+    for col1, col2 in combinations(cols, 2):
+        conf = pd.crosstab(df[col1], df[col2])
+        v = cramers_v(conf)
+        matrix.loc[col1, col2] = v
+        matrix.loc[col2, col1] = v
+    np.fill_diagonal(matrix.values, 1.0)
+    return matrix
+
+# Configuração da página
+st.set_page_config(page_title="Correlação Categórica", layout="wide")
 inject_css()
-banner("Correlação qualitativa", "IESB • Ciência de Dados")
+banner("Correlação Categórica", "IESB • Ciência de Dados")
 configure_plotly()
 
-# Carregamento e pré-processamento
-dados_aih, dados_mun = load_data()
-df = pre_process(dados_aih, dados_mun)
-cat_cols = df.select_dtypes(include=["category", "object"]).columns.tolist()
-
-# Seleção pelo usuário
-sel_cols = st.sidebar.multiselect(
-    "Variáveis categóricas", cat_cols,
-    default=cat_cols[:min(4, len(cat_cols))]
-)
-
-if len(sel_cols) < 2:
-    st.info("Selecione pelo menos duas variáveis para correlacionar.")
+# Carregamento e pré-processamento dos dados
+aio_df = safe_read_csv(DATA_AIH_PATH, sep=";")
+mun_df = safe_read_csv(DATA_MUN_PATH, sep=",")
+if aih_df is None or mun_df is None:
+    st.warning("Aguardando arquivos para iniciar o processamento.")
     st.stop()
 
-# Cálculo e exibição
-corr_df = cramers_matrix(df[sel_cols])
-fig = px.imshow(
-    corr_df,
-    text_auto=".2f",
-    aspect="auto",
-    color_continuous_scale=[[0, "#FFFFFF"], [1, "#E60000"]],
-    title="Matriz de Cramér's V"
-)
-st.plotly_chart(fig, use_container_width=True)
+df = pre_process(aih_df, mun_df)
+
+# -------------------- Sidebar --------------------
+st.sidebar.header("Seleção de colunas")
+cat_cols = df.select_dtypes(include="category").columns.tolist()
+sel_cols = st.sidebar.multiselect("Colunas categóricas", cat_cols, default=cat_cols[:3])
+
+# -------------------- Cálculo e Exibição --------------------
+if len(sel_cols) < 2:
+    st.info("Selecione pelo menos duas variáveis para correlacionar.")
+else:
+    corr_df = cramers_matrix(df, sel_cols)
+    fig = px.imshow(
+        corr_df,
+        text_auto=".2f",
+        aspect="auto",
+        color_continuous_scale="RdBu_r",
+        title="Matriz de Correlação Categórica (Cramér's V)"
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 # -------------------- Navegação --------------------
-st.page_link("app.py", label="🏠 Dashboard")
-st.page_link("pages/02_Estatisticas.py", label="📊 Estatísticas")
-st.page_link("pages/03_Correlacao_Categ.py", label="🔗 Correlação categórica", disabled=True)
+st.markdown("---")
+st.write("[🏠 Voltar ao Dashboard](../app.py)")
