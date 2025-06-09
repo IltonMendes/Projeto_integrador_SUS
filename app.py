@@ -3,16 +3,18 @@ from pathlib import Path
 import plotly.express as px
 import pydeck as pdk
 import streamlit as st
+import pandas as pd
 
-from utils import load_data, pre_process
+from utils import safe_read_csv, pre_process
 
 TITLE = "Relatório de Produção Hospitalar – SUS"
 SUBTITLE = "IESB • Ciência de Dados"
 LOGO_PATH = Path("images/logo.png").resolve()
 
+DATA_AIH_PATH = Path("dados_corrigidos.csv")
+DATA_MUN_PATH = Path("municipios.csv")
 
 # Sidebar – filtros 
-
 def sidebar_filters(df):
     st.sidebar.header("🔎 Filtros")
     modo = st.sidebar.radio("Tipo de dado", ("Valor", "Quantidade"), horizontal=True)
@@ -22,7 +24,6 @@ def sidebar_filters(df):
 
 
 # Métricas 
-
 def metric(df):
     col1, col2 = st.columns(2)
     col1.metric("💰 Valor total gasto", f"R$ {df['vl_total'].sum():,.2f}")
@@ -30,7 +31,6 @@ def metric(df):
 
 
 # Gráficos principais
-
 def bar_charts(df, modo):
     cols_valor = [f"vl_{i:02d}" for i in range(2, 9)]
     cols_qtd = [f"qtd_{i:02d}" for i in range(1, 9)]
@@ -73,15 +73,44 @@ def bubble_map(df, modo):
     ))
 
 
-# Página principal
+# Função para carregar dados com upload caso arquivos locais não existam
+def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
+    # Dados AIH
+    try:
+        aih = safe_read_csv(DATA_AIH_PATH, sep=";")
+    except FileNotFoundError:
+        st.warning(f"Arquivo {DATA_AIH_PATH.name} não encontrado. Faça upload do arquivo.")
+        uploaded = st.file_uploader(f"Upload de {DATA_AIH_PATH.name}", type=["csv"], key="upload_aih")
+        if not uploaded:
+            st.stop()
+        aih = pd.read_csv(uploaded, sep=";", low_memory=False)
 
+    # Dados municípios
+    try:
+        mun = safe_read_csv(DATA_MUN_PATH, sep=",")
+    except FileNotFoundError:
+        st.warning(f"Arquivo {DATA_MUN_PATH.name} não encontrado. Faça upload do arquivo.")
+        uploaded = st.file_uploader(f"Upload de {DATA_MUN_PATH.name}", type=["csv"], key="upload_mun")
+        if not uploaded:
+            st.stop()
+        mun = pd.read_csv(uploaded, sep=",", low_memory=False)
+
+    return aih, mun
+
+
+@st.cache_data(show_spinner="↻ Lendo dados...")
+def cached_load_data():
+    return load_data()
+
+
+# Página principal
 def main():
     st.set_page_config(page_title=TITLE, layout="wide")
 
     if LOGO_PATH.exists():
         st.sidebar.image(str(LOGO_PATH), width=140)
 
-    raw_aih, raw_mun = load_data()
+    raw_aih, raw_mun = cached_load_data()
     df = pre_process(raw_aih, raw_mun)
 
     # Filtros 
@@ -95,16 +124,17 @@ def main():
     with col_right:
         time_series(df_filtro, modo)
 
-    st.divider(); bubble_map(df_filtro, modo)
+    st.divider()
+    bubble_map(df_filtro, modo)
 
     # Navegação
     st.page_link("app.py", label="🏠 Dashboard", disabled=True)
     st.page_link("pages/02_Estatisticas.py", label="📊 Estatísticas")
     st.page_link("pages/03_Correlacao.py", label="🔗 Correlação categórica")
 
+
 if __name__ == "__main__":
     main()
-
 
 
 
