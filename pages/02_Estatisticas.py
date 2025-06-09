@@ -1,9 +1,9 @@
-"""Página: Estatísticas Descritivas"""
 import streamlit as st
 import plotly.express as px
 from utils import load_data, pre_process
 from iesb_streamlit_style import inject_css, banner, configure_plotly
 
+# Configuração da página
 st.set_page_config(page_title="Estatísticas descritivas", layout="wide")
 inject_css()
 banner("Estatísticas descritivas", "IESB • Ciência de Dados")
@@ -21,9 +21,8 @@ if not sel_cols:
     st.info("Selecione ao menos uma coluna na barra lateral.")
     st.stop()
 
-# -------------------- Resumo --------------------
+# -------------------- Resumo Estatístico --------------------
 with st.expander("📋 Resumo estatístico"):
-    # Exibe estatísticas das colunas selecionadas
     st.write(f"Exibindo resumo estatístico de: {', '.join(sel_cols)}")
     st.dataframe(df[sel_cols].describe().T)
 
