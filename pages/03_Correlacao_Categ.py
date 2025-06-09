@@ -1,4 +1,3 @@
-"""Página: Correlação entre variáveis qualitativas"""
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -9,45 +8,57 @@ from utils import load_data, pre_process
 from iesb_streamlit_style import inject_css, banner, configure_plotly
 
 # -------------------- Helpers --------------------
-
-def cramers_v(x, y):
+def cramers_v(x: pd.Series, y: pd.Series) -> float:
     conf = pd.crosstab(x, y)
     chi2 = chi2_contingency(conf)[0]
     n = conf.values.sum()
     r, k = conf.shape
     phi2 = chi2 / n
+    # Correção de viés
     phi2_corr = max(0, phi2 - ((k-1)*(r-1))/(n-1))
     r_corr = r - ((r-1)**2)/(n-1)
     k_corr = k - ((k-1)**2)/(n-1)
     return np.sqrt(phi2_corr / max(1e-9, min((k_corr-1), (r_corr-1))))
 
 @st.cache_data(show_spinner="↻ Matriz de Cramér's V…")
-def cramers_matrix(df_cat):
+def cramers_matrix(df_cat: pd.DataFrame) -> pd.DataFrame:
     cols = df_cat.columns
     v = np.eye(len(cols))
     for i, j in combinations(range(len(cols)), 2):
-        v[i, j] = v[j, i] = cramers_v(df_cat.iloc[:, i], df_cat.iloc[:, j])
+        value = cramers_v(df_cat.iloc[:, i], df_cat.iloc[:, j])
+        v[i, j] = v[j, i] = value
     return pd.DataFrame(v, index=cols, columns=cols)
 
 # -------------------- Layout --------------------
+st.set_page_config(page_title="Correlação qualitativa", layout="wide")
+inject_css()
+banner("Correlação qualitativa", "IESB • Ciência de Dados")
+configure_plotly()
 
-st.set_page_config(page_title="Correlação categórica", layout="wide")
-inject_css(); banner("Correlação qualitativa", "IESB • Ciência de Dados"); configure_plotly()
-
-raw_aih, raw_mun = load_data()
-df = pre_process(raw_aih, raw_mun)
+# Carregamento e pré-processamento
+dados_aih, dados_mun = load_data()
+df = pre_process(dados_aih, dados_mun)
 cat_cols = df.select_dtypes(include=["category", "object"]).columns.tolist()
 
-sel_cols = st.sidebar.multiselect("Variáveis categóricas", cat_cols, default=cat_cols[:min(4, len(cat_cols))])
+# Seleção pelo usuário
+sel_cols = st.sidebar.multiselect(
+    "Variáveis categóricas", cat_cols,
+    default=cat_cols[:min(4, len(cat_cols))]
+)
 
 if len(sel_cols) < 2:
     st.info("Selecione pelo menos duas variáveis para correlacionar.")
     st.stop()
 
+# Cálculo e exibição
 corr_df = cramers_matrix(df[sel_cols])
-fig = px.imshow(corr_df, text_auto=".2f", aspect="auto",
-                color_continuous_scale=[[0, "#FFFFFF"], [1, "#E60000"]],
-                title="Matriz de Cramér's V")
+fig = px.imshow(
+    corr_df,
+    text_auto=".2f",
+    aspect="auto",
+    color_continuous_scale=[[0, "#FFFFFF"], [1, "#E60000"]],
+    title="Matriz de Cramér's V"
+)
 st.plotly_chart(fig, use_container_width=True)
 
 # -------------------- Navegação --------------------
