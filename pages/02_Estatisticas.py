@@ -1,28 +1,30 @@
 import streamlit as st
 import plotly.express as px
-from utils import load_data, pre_process
+from utils import safe_read_csv, pre_process, DATA_AIH_PATH, DATA_MUN_PATH
 from iesb_streamlit_style import inject_css, banner, configure_plotly
 
 # Configuração da página
-st.set_page_config(page_title="Estatísticas descritivas", layout="wide")
+st.set_page_config(page_title="Estatísticas Descritivas", layout="wide")
 inject_css()
-banner("Estatísticas descritivas", "IESB • Ciência de Dados")
+banner("Estatísticas Descritivas", "IESB • Ciência de Dados")
 configure_plotly()
 
 # Carregamento e pré-processamento dos dados
-raw_aih, raw_mun = load_data()
-df = pre_process(raw_aih, raw_mun)
-
-# -------------------- Sidebar --------------------
-num_cols = df.select_dtypes(include="number").columns.tolist()
-sel_cols = st.sidebar.multiselect("Variáveis numéricas", num_cols, default=[])
-
-if not sel_cols:
-    st.info("Selecione ao menos uma coluna na barra lateral.")
+aio_df = safe_read_csv(DATA_AIH_PATH, sep=";")
+mun_df = safe_read_csv(DATA_MUN_PATH, sep=",")
+if aih_df is None or mun_df is None:
+    st.warning("Aguardando arquivos para iniciar o processamento.")
     st.stop()
 
+df = pre_process(aih_df, mun_df)
+
+# -------------------- Sidebar --------------------
+st.sidebar.header("Seleção de colunas")
+num_cols = df.select_dtypes(include="number").columns.tolist()
+sel_cols = st.sidebar.multiselect("Colunas numéricas", num_cols, default=num_cols[:3])
+
 # -------------------- Resumo Estatístico --------------------
-with st.expander("📋 Resumo estatístico"):
+with st.expander("📋 Resumo Estatístico"):
     st.write(f"Exibindo resumo estatístico de: {', '.join(sel_cols)}")
     st.dataframe(df[sel_cols].describe().T)
 
@@ -32,7 +34,6 @@ for col in sel_cols:
     st.plotly_chart(fig, use_container_width=True)
 
 # -------------------- Navegação --------------------
-st.page_link("app.py", label="🏠 Visão geral")
-st.page_link("pages/02_Estatisticas.py", label="📊 Estatísticas", disabled=True)
-st.page_link("pages/03_Correlacao_Categ.py", label="🔗 Correlação categórica")
+st.markdown("---")
+st.write("[🏠 Voltar ao Dashboard](../app.py)")
 
