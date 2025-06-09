@@ -10,8 +10,9 @@ st.title("Estatísticas Descritivas")
 st.markdown("IESB • Ciência de Dados")
 
 # Carregamento e pré-processamento
-csv_aih = safe_read_csv(DATA_AIH_PATH)
-csv_mun = safe_read_csv(DATA_MUN_PATH)
+csv_aih = safe_read_csv(DATA_AIH_PATH, sep=";")
+csv_mun = safe_read_csv(DATA_MUN_PATH, sep=",")
+
 df = pre_process(csv_aih, csv_mun)
 
 # Seleção de variáveis numéricas
@@ -26,8 +27,4 @@ st.write(descr)
 # Gráfico de distribuição
 fig = px.histogram(df, x=selecionada, nbins=50, title=f"Distribuição de {selecionada}")
 st.plotly_chart(fig, use_container_width=True)
-
-# -------------------- Navegação --------------------
-st.markdown("---")
-st.write("[🏠 Voltar ao Dashboard](../app.py)")
 
