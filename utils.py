@@ -3,9 +3,15 @@ from pathlib import Path
 import pandas as pd
 
 def safe_read_csv(file_or_path, sep: str) -> pd.DataFrame:
+    """
+    Lê CSV a partir de um Path ou arquivo uploadado (UploadedFile).
+    Não faz upload nem interação com Streamlit.
+    """
     if hasattr(file_or_path, "read"):
+        # É arquivo uploadado
         return pd.read_csv(file_or_path, sep=sep, low_memory=False)
     else:
+        # É Path, tenta ler do disco
         if not Path(file_or_path).exists():
             raise FileNotFoundError(f"Arquivo {file_or_path} não encontrado.")
         return pd.read_csv(file_or_path, sep=sep, low_memory=False)
@@ -29,4 +35,5 @@ def pre_process(data: pd.DataFrame, municipios: pd.DataFrame) -> pd.DataFrame:
     df["qtd_normalizado"] = df["qtd_total"] / df["qtd_total"].max() * 30_000
 
     return df
+
 
