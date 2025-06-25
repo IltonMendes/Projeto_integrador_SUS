@@ -10,10 +10,6 @@ DATA_MUN_PATH = BASE_PATH / "municipios.csv"
 
 
 def safe_read_csv(file_or_path, sep: str) -> pd.DataFrame:
-    """
-    Lê CSV via Path local ou arquivo uploadado no Streamlit.
-    Se não encontrar arquivo local, exibe widget para upload.
-    """
     if hasattr(file_or_path, "read"):
         return pd.read_csv(file_or_path, sep=sep, low_memory=False)
     else:
